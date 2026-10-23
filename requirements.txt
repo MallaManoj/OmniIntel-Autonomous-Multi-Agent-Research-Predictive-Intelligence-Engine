@@ -1,0 +1,19 @@
+# Core Machine Learning & Deep Learning
+torch>=2.0.0
+numpy>=1.24.0
+
+# LLM, Agentic & Data Validation
+pydantic>=2.5.0
+
+# API & Networking
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+httpx>=0.25.0
+
+# Configuration & Utilities
+pyyaml>=6.0.1
+python-dotenv>=1.0.0
+
+# Testing & Code Quality (Development)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0

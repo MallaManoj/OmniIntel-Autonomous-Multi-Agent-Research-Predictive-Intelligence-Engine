@@ -1,0 +1,19 @@
+# OmniIntel System Configuration
+system:
+  name: "OmniIntel"
+  version: "0.1.0"
+  device: "auto"  # 'auto' automatically detects CUDA / MPS / CPU
+
+dsa:
+  lru_cache_capacity: 1024
+  trie_case_sensitive: false
+
+model:
+  embedding_dim: 256
+  max_seq_len: 128
+  reranker_hidden_dim: 128
+  batch_size: 16
+
+agents:
+  max_reflection_retries: 3
+  timeout_seconds: 60
