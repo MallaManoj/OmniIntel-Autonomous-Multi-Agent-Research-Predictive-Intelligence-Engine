@@ -7,7 +7,7 @@
 
 # Default shell
 SHELL := /usr/bin/env bash
-PYTHON ?= $(shell if [ -x /opt/homebrew/bin/python3 ]; then echo /opt/homebrew/bin/python3; elif [ -x /usr/bin/python3 ]; then echo /usr/bin/python3; else echo python3; fi)
+PYTHON ?= $(shell if [ -x ./.venv/bin/python3 ]; then echo ./.venv/bin/python3; elif [ -x /opt/homebrew/bin/python3 ]; then echo /opt/homebrew/bin/python3; elif [ -x /usr/bin/python3 ]; then echo /usr/bin/python3; else echo python3; fi)
 
 help:
 	@echo "OmniIntel Project Automation Commands:"
