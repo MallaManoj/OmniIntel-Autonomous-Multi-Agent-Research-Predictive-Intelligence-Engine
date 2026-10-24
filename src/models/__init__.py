@@ -14,6 +14,13 @@ from src.models.losses import (
     ListNetRankingLoss,
     TripletMarginRankingLoss,
 )
+from src.models.metrics import (
+    RankingEvaluator,
+    compute_dcg_at_k,
+    compute_hit_rate_at_k,
+    compute_ndcg_at_k,
+    compute_reciprocal_rank,
+)
 from src.models.reranker import (
     CrossEncoderConfig,
     CrossEncoderReranker,
@@ -38,4 +45,9 @@ __all__ = [
     "collate_triplet_batch",
     "TrainingConfig",
     "CrossEncoderTrainer",
+    "compute_reciprocal_rank",
+    "compute_dcg_at_k",
+    "compute_ndcg_at_k",
+    "compute_hit_rate_at_k",
+    "RankingEvaluator",
 ]
