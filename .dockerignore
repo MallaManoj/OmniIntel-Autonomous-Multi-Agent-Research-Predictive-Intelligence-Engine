@@ -1,0 +1,45 @@
+# ==============================================================================
+# OmniIntel Docker Build Ignore Rules
+# Excludes local environments, caches, and dev artifacts from image build context
+# ==============================================================================
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python bytecode & runtime caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Git metadata & workflows
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# IDE & OS-specific files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# Checkpoint weights & logs (large files)
+checkpoints/*.pt
+*.log
+
+# Docker Compose overrides and local secrets
+docker-compose*.override.yml
+.env
+.env.local
+.env.*.local
