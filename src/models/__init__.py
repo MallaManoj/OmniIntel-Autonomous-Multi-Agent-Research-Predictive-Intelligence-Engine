@@ -19,6 +19,7 @@ from src.models.reranker import (
     CrossEncoderReranker,
     TransformerEncoderBlock,
 )
+from src.models.trainer import CrossEncoderTrainer, TrainingConfig
 
 __all__ = [
     "DeviceManager",
@@ -35,4 +36,6 @@ __all__ = [
     "TripletBatch",
     "TripletRerankingDataset",
     "collate_triplet_batch",
+    "TrainingConfig",
+    "CrossEncoderTrainer",
 ]
