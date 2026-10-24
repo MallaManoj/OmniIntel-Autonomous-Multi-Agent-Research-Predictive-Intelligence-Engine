@@ -10,7 +10,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.routes import graph_router, health_router, mission_router, websocket_router
+from src.api.routes import (
+    graph_router,
+    health_router,
+    mission_router,
+    search_router,
+    websocket_router,
+)
 from src.api.state import app_state, initialize_knowledge_base
 from src.api.websocket import ws_manager
 from src.core.events import Event, EventType
@@ -152,6 +158,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(mission_router)
     app.include_router(graph_router)
+    app.include_router(search_router)
     app.include_router(websocket_router)
 
     # -------------------------------------------------------------------------

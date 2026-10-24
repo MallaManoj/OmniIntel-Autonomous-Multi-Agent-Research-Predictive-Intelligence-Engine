@@ -7,6 +7,8 @@ from src.api.schemas import (
     EntityDetailResponse,
     GraphStatsResponse,
     PathQueryResponse,
+    SubgraphRequest,
+    SubgraphResponse,
 )
 from src.api.state import AppState, get_app_state
 from src.knowledge_graph.traversal import GraphTraversalEngine
@@ -162,4 +164,49 @@ async def find_reasoning_path(
         hop_count=path_res.hop_count,
         aggregate_confidence=round(path_res.confidence_score, 4),
         path_explanation=path_res.to_explanation() if path_res.found else f"No path found between {src_ent.name} and {tgt_ent.name}.",
+    )
+
+
+@router.post("/subgraph", response_model=SubgraphResponse, summary="Extract Egocentric Subgraph")
+async def extract_subgraph(
+    request: SubgraphRequest,
+    state: AppState = Depends(get_app_state),
+) -> SubgraphResponse:
+    """Extract local topological subgraph surrounding root entity up to max_hops."""
+    if not state.is_ready or state.knowledge_graph is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Knowledge graph is initializing.",
+        )
+
+    kg = state.knowledge_graph
+    root = kg.resolve_entity(request.root_entity_id) or kg.get_entity(request.root_entity_id)
+    if not root:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Root entity '{request.root_entity_id}' not found in knowledge graph.",
+        )
+
+    subgraph = kg.get_subgraph(root.entity_id, max_hops=request.max_hops)
+    if not subgraph:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Could not extract subgraph for root entity '{request.root_entity_id}'.",
+        )
+
+    # Filter triples by confidence if specified
+    filtered_triples = [
+        trip.model_dump()
+        for trip in subgraph.triples
+        if trip.confidence >= request.min_confidence
+    ]
+    entities_dicts = [e.model_dump() for e in subgraph.entities]
+
+    return SubgraphResponse(
+        root_entity_id=root.entity_id,
+        total_entities=len(entities_dicts),
+        total_triples=len(filtered_triples),
+        entities=entities_dicts,
+        triples=filtered_triples,
+        hop_depth=request.max_hops,
     )
