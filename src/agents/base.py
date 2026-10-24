@@ -177,6 +177,11 @@ class ToolRegistry:
         """Look up tool by name."""
         return self._tools.get(name)
 
+    @property
+    def tool_names(self) -> List[str]:
+        """Return list of all registered tool names."""
+        return list(self._tools.keys())
+
     def has_tool(self, name: str) -> bool:
         """Check if tool is registered."""
         return name in self._tools

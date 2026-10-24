@@ -16,6 +16,12 @@ from src.agents.planner import (
     PlannedTask,
     PlannerAgent,
 )
+from src.agents.researcher import (
+    CitationItem,
+    GraphProvenance,
+    ResearchDossier,
+    ResearcherAgent,
+)
 from src.agents.tools import (
     SandboxedREPL,
     SandboxSecurityError,
@@ -32,10 +38,14 @@ __all__ = [
     "AgentResponse",
     "AgentState",
     "BaseAgent",
+    "CitationItem",
     "ExecutionPlan",
+    "GraphProvenance",
     "PlanComplexity",
     "PlannedTask",
     "PlannerAgent",
+    "ResearchDossier",
+    "ResearcherAgent",
     "SandboxedREPL",
     "SandboxSecurityError",
     "Tool",
