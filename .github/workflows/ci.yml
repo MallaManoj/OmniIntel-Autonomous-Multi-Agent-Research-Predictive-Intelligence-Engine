@@ -1,0 +1,148 @@
+name: OmniIntel CI/CD Pipeline
+
+'on':
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # 1. Code Quality, Syntax & AST Integrity
+  # ============================================================================
+  quality-and-lint:
+    name: Code Quality & Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Linting & Core Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml pydantic
+
+      - name: Verify Python Syntax & AST Compilation
+        run: |
+          python -m compileall -q src tests scripts
+          echo "✓ All Python source modules compiled without syntax errors."
+
+  # ============================================================================
+  # 2. Automated Test Matrix & Model Smoke Tests
+  # ============================================================================
+  test-and-coverage:
+    name: Test Matrix (Python ${{ matrix.python-version }})
+    needs: quality-and-lint
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y curl build-essential
+
+      - name: Install Production & Test Dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          # Install CPU-specific PyTorch wheel for rapid CI execution
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+
+      - name: Run Full Automated Test Suite (unittest)
+        run: |
+          python -m unittest discover tests -v
+
+      - name: Run Reranker Fine-Tuning Pipeline Smoke Test
+        run: |
+          python scripts/train_reranker.py
+
+      - name: Run Neural Model Benchmark Smoke Test
+        run: |
+          python scripts/benchmark_models.py
+
+  # ============================================================================
+  # 3. Docker Multi-Stage Build & Container Verification
+  # ============================================================================
+  docker-build-and-verify:
+    name: Multi-Stage Docker Build & Health Probe
+    needs: [quality-and-lint, test-and-coverage]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Production Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          target: runner
+          load: true
+          tags: omniintel:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Launch Container & Verify Health Probes
+        run: |
+          docker run -d --name omniintel-ci-test -p 8000:8000 omniintel:test
+          echo "Waiting for container startup and healthcheck..."
+          for i in {1..30}; do
+            if curl -s -f http://localhost:8000/health; then
+              echo "✓ OmniIntel API health check passed successfully."
+              break
+            fi
+            sleep 1
+          done
+
+          # Verify readiness endpoint
+          curl -s -f http://localhost:8000/health/ready | grep '"is_ready":true'
+          echo "✓ Subsystems readiness verified."
+
+          # Tear down container
+          docker stop omniintel-ci-test
+          docker rm omniintel-ci-test
+
+  # ============================================================================
+  # 4. Docker Compose Multi-Service Validation
+  # ============================================================================
+  docker-compose-validate:
+    name: Docker Compose Schema & Configuration Check
+    needs: [quality-and-lint, test-and-coverage]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configuration
+        run: |
+          docker compose config
+          echo "✓ Docker Compose topology validated."
