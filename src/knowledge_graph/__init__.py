@@ -8,6 +8,12 @@ from src.knowledge_graph.hybrid_search import (
     HybridSearchEngine,
     HybridSearchResult,
 )
+from src.knowledge_graph.pipeline import (
+    HybridRAGPipeline,
+    PipelineContextItem,
+    RetrievalPipelineConfig,
+    RetrievalPipelineOutput,
+)
 from src.knowledge_graph.schema import (
     Entity,
     EntityType,
@@ -43,7 +49,12 @@ __all__ = [
     "HybridSearchConfig",
     "HybridSearchEngine",
     "HybridSearchResult",
+    "HybridRAGPipeline",
+    "PipelineContextItem",
+    "RetrievalPipelineConfig",
+    "RetrievalPipelineOutput",
 ]
+
 
 
 

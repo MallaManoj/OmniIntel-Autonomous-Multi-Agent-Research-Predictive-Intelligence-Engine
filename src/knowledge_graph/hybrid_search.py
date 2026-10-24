@@ -303,19 +303,16 @@ class HybridSearchEngine:
                     rrf_score += cfg.graph_weight * (1.0 / (cfg.rrf_k + graph_ranks[doc_id]))
                 fused_scores[doc_id] = rrf_score
         else:
-            # Linear Score Combination with Min-Max normalization
-            def min_max_norm(scores: Dict[str, float]) -> Dict[str, float]:
-                if not scores:
-                    return {}
-                vals = list(scores.values())
-                min_v, max_v = min(vals), max(vals)
-                if abs(max_v - min_v) < 1e-9:
-                    return {k: 1.0 for k in scores}
-                return {k: (v - min_v) / (max_v - min_v) for k, v in scores.items()}
+            # Linear Score Combination with calibrated scale mapping
+            # 1. Cosine similarity [-1.0, 1.0] maps smoothly to [0.0, 1.0]
+            norm_dense = {k: max(0.0, min(1.0, (v + 1.0) / 2.0)) for k, v in dense_results.items()}
 
-            norm_dense = min_max_norm(dense_results)
-            norm_sparse = min_max_norm(sparse_results)
-            norm_graph = min_max_norm(graph_results)
+            # 2. Non-negative sparse and graph scores scale relative to maximum active score
+            max_sp = max(sparse_results.values()) if sparse_results else 1.0
+            norm_sparse = {k: v / max_sp for k, v in sparse_results.items()} if max_sp > 0 else {}
+
+            max_gr = max(graph_results.values()) if graph_results else 1.0
+            norm_graph = {k: v / max_gr for k, v in graph_results.items()} if max_gr > 0 else {}
 
             for doc_id in all_candidate_ids:
                 fused = (
