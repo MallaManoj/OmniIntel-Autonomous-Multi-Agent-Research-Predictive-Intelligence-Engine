@@ -10,6 +10,7 @@ from src.models.dataset import (
     collate_triplet_batch,
 )
 from src.models.device import DeviceManager, get_device
+from src.models.inference import CrossEncoderInferenceEngine, RerankResult
 from src.models.losses import (
     InBatchHardNegativeMiner,
     ListNetRankingLoss,
@@ -52,4 +53,6 @@ __all__ = [
     "compute_hit_rate_at_k",
     "RankingEvaluator",
     "ModelCheckpointManager",
+    "CrossEncoderInferenceEngine",
+    "RerankResult",
 ]
