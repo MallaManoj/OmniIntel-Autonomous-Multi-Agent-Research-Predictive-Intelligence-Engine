@@ -20,6 +20,7 @@ from src.api.routes import (
     health_router,
     mission_router,
     search_router,
+    ui_router,
     websocket_router,
 )
 from src.api.state import app_state, initialize_knowledge_base
@@ -172,6 +173,7 @@ def create_app() -> FastAPI:
     app.include_router(mission_router)
     app.include_router(graph_router)
     app.include_router(search_router)
+    app.include_router(ui_router)
     app.include_router(websocket_router)
 
     # -------------------------------------------------------------------------
@@ -183,6 +185,7 @@ def create_app() -> FastAPI:
             "service": "OmniIntel Autonomous Multi-Agent Predictive Intelligence Engine",
             "version": "1.0.0",
             "status": "online",
+            "ui": "/ui",
             "docs": "/docs",
             "redoc": "/redoc",
             "health": "/health",
