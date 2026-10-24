@@ -3,6 +3,11 @@
 from src.knowledge_graph.chunker import DocumentChunk, TextChunker
 from src.knowledge_graph.embeddings import DenseEmbeddingModel, EmbeddingEngine
 from src.knowledge_graph.graph import KnowledgeGraph
+from src.knowledge_graph.eval import (
+    RetrievalEvaluator,
+    RetrievalMetrics,
+    RetrievalTestCase,
+)
 from src.knowledge_graph.hybrid_search import (
     HybridSearchConfig,
     HybridSearchEngine,
@@ -53,7 +58,11 @@ __all__ = [
     "PipelineContextItem",
     "RetrievalPipelineConfig",
     "RetrievalPipelineOutput",
+    "RetrievalEvaluator",
+    "RetrievalMetrics",
+    "RetrievalTestCase",
 ]
+
 
 
 
