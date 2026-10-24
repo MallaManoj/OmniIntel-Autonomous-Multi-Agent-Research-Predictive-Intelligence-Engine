@@ -10,6 +10,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from src.api.middleware import (
+    RateLimitMiddleware,
+    StructuredLoggingMiddleware,
+    global_rate_limiter,
+)
 from src.api.routes import (
     graph_router,
     health_router,
@@ -72,37 +77,31 @@ def create_app() -> FastAPI:
     )
 
     # -------------------------------------------------------------------------
-    # Middleware: CORS
+    # Middleware Pipeline
+    # Execution Order (Onion model):
+    #   Request -> StructuredLogging -> CORS -> RateLimit -> Router
+    #   Response <- StructuredLogging <- CORS <- RateLimit <- Router
     # -------------------------------------------------------------------------
+    app.add_middleware(RateLimitMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["X-Correlation-ID", "X-Process-Time-Ms"],
+        expose_headers=[
+            "X-Correlation-ID",
+            "X-Process-Time-Ms",
+            "X-RateLimit-Limit",
+            "X-RateLimit-Remaining",
+            "X-RateLimit-Reset",
+            "Retry-After",
+        ],
     )
+    app.add_middleware(StructuredLoggingMiddleware)
 
     # -------------------------------------------------------------------------
-    # Middleware: Correlation ID & Process Timing
-    # -------------------------------------------------------------------------
-    @app.middleware("http")
-    async def request_telemetry_middleware(request: Request, call_next: Any) -> Response:
-        start_time = time.perf_counter()
-        correlation_id = request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
-
-        # Store correlation id on request state
-        request.state.correlation_id = correlation_id
-
-        response = await call_next(request)
-
-        process_time_ms = (time.perf_counter() - start_time) * 1000.0
-        response.headers["X-Correlation-ID"] = correlation_id
-        response.headers["X-Process-Time-Ms"] = f"{process_time_ms:.2f}"
-        return response
-
-    # -------------------------------------------------------------------------
-    # Global Exception Handlers
+    # Global Exception Handlers & Error Boundaries
     # -------------------------------------------------------------------------
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
@@ -132,6 +131,20 @@ def create_app() -> FastAPI:
                 "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
                 "message": "Request payload validation failed",
                 "details": formatted_errors,
+                "correlation_id": correlation_id,
+            },
+            headers={"X-Correlation-ID": correlation_id},
+        )
+
+    @app.exception_handler(ValueError)
+    async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+        correlation_id = getattr(request.state, "correlation_id", "unknown")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error": True,
+                "status_code": status.HTTP_400_BAD_REQUEST,
+                "message": str(exc),
                 "correlation_id": correlation_id,
             },
             headers={"X-Correlation-ID": correlation_id},
