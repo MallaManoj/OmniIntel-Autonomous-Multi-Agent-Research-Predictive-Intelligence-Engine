@@ -3,6 +3,11 @@
 from src.knowledge_graph.chunker import DocumentChunk, TextChunker
 from src.knowledge_graph.embeddings import DenseEmbeddingModel, EmbeddingEngine
 from src.knowledge_graph.graph import KnowledgeGraph
+from src.knowledge_graph.hybrid_search import (
+    HybridSearchConfig,
+    HybridSearchEngine,
+    HybridSearchResult,
+)
 from src.knowledge_graph.schema import (
     Entity,
     EntityType,
@@ -35,7 +40,11 @@ __all__ = [
     "KnowledgeGraph",
     "GraphTraversalEngine",
     "PathResult",
+    "HybridSearchConfig",
+    "HybridSearchEngine",
+    "HybridSearchResult",
 ]
+
 
 
 
