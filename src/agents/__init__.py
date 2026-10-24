@@ -16,6 +16,10 @@ from src.agents.critic import (
     VerificationAudit,
     VerificationVerdict,
 )
+from src.agents.orchestrator import (
+    MasterOrchestrator,
+    OrchestratorResult,
+)
 from src.agents.planner import (
     ExecutionPlan,
     PlanComplexity,
@@ -63,6 +67,8 @@ __all__ = [
     "ExecutiveDossier",
     "ExecutionPlan",
     "GraphProvenance",
+    "MasterOrchestrator",
+    "OrchestratorResult",
     "PlanComplexity",
     "PlannedTask",
     "PlannerAgent",
