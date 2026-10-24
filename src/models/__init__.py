@@ -1,6 +1,11 @@
 """Custom PyTorch models, losses, and inference engines."""
 
 from src.models.device import DeviceManager, get_device
+from src.models.losses import (
+    InBatchHardNegativeMiner,
+    ListNetRankingLoss,
+    TripletMarginRankingLoss,
+)
 from src.models.reranker import (
     CrossEncoderConfig,
     CrossEncoderReranker,
@@ -13,4 +18,7 @@ __all__ = [
     "CrossEncoderConfig",
     "CrossEncoderReranker",
     "TransformerEncoderBlock",
+    "TripletMarginRankingLoss",
+    "InBatchHardNegativeMiner",
+    "ListNetRankingLoss",
 ]
