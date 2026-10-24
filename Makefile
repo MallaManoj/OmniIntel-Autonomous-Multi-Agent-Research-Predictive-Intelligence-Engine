@@ -3,7 +3,7 @@
 # Unified CLI commands for local development, testing, and maintenance.
 # ==============================================================================
 
-.PHONY: help setup test lint clean
+.PHONY: help setup test lint clean train
 
 # Default shell
 SHELL := /usr/bin/env bash
@@ -14,11 +14,16 @@ help:
 	@echo "  make setup    - Validate environment, initialize .venv, and setup .env"
 	@echo "  make test     - Run full automated unit and integration test suite"
 	@echo "  make lint     - Verify Python syntax and AST integrity across codebase"
+	@echo "  make train    - Execute PyTorch Cross-Encoder training and validation loop"
 	@echo "  make clean    - Remove build artifacts, pycache, and temporary test caches"
 
 setup:
 	@chmod +x scripts/setup_env.sh
 	@./scripts/setup_env.sh
+
+train:
+	@echo "Launching PyTorch Cross-Encoder fine-tuning pipeline..."
+	@$(PYTHON) scripts/train_reranker.py
 
 test:
 	@echo "Running test suite via Python unittest..."
