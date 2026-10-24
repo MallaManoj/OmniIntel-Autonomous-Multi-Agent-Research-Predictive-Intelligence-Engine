@@ -16,6 +16,12 @@ from src.agents.planner import (
     PlannedTask,
     PlannerAgent,
 )
+from src.agents.quant import (
+    ComputedMetric,
+    EntityFinancialProfile,
+    QuantAgent,
+    QuantReport,
+)
 from src.agents.researcher import (
     CitationItem,
     GraphProvenance,
@@ -39,11 +45,15 @@ __all__ = [
     "AgentState",
     "BaseAgent",
     "CitationItem",
+    "ComputedMetric",
+    "EntityFinancialProfile",
     "ExecutionPlan",
     "GraphProvenance",
     "PlanComplexity",
     "PlannedTask",
     "PlannerAgent",
+    "QuantAgent",
+    "QuantReport",
     "ResearchDossier",
     "ResearcherAgent",
     "SandboxedREPL",
