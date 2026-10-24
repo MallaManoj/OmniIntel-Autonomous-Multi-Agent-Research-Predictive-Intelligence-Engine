@@ -3,7 +3,7 @@
 # Unified CLI commands for local development, testing, and maintenance.
 # ==============================================================================
 
-.PHONY: help setup test lint clean train benchmark demo-rag demo-agents run-api docker-build docker-run compose-up compose-down compose-logs
+.PHONY: help setup test lint clean train benchmark demo-rag demo-agents run-api run-ui docker-build docker-run compose-up compose-down compose-logs
 
 # Default shell
 SHELL := /usr/bin/env bash
@@ -44,6 +44,10 @@ demo-agents:
 run-api:
 	@echo "Starting OmniIntel FastAPI production service on http://0.0.0.0:8000..."
 	@$(PYTHON) -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
+
+run-ui:
+	@echo "Launching OmniIntel Streamlit interactive dashboard on http://localhost:8501..."
+	@$(PYTHON) -m streamlit run src/ui/dashboard.py --server.port=8501
 
 docker-build:
 	@echo "Building production multi-stage Docker image (omniintel:latest)..."
