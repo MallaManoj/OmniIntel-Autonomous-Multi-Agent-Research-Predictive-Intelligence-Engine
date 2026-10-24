@@ -101,7 +101,7 @@ def build_subgraph_dot_graph(subgraph_data: Dict[str, Any]) -> str:
     for trip in triples:
         sub = trip.get("subject", {}).get("entity_id", "")
         obj = trip.get("object", {}).get("entity_id", "")
-        rel = trip.get("relation", {}).get("relation_name", "RELATED_TO")
+        rel = trip.get("relation", {}).get("relation_type") or trip.get("relation", {}).get("relation_name", "RELATED_TO")
         conf = trip.get("confidence", 1.0)
         if sub and obj:
             lines.append(f'    "{sub}" -> "{obj}" [label="{rel}\\n({conf:.2f})"];')
