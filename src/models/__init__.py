@@ -1,5 +1,6 @@
 """Custom PyTorch models, losses, and inference engines."""
 
+from src.models.checkpoint import ModelCheckpointManager
 from src.models.dataset import (
     EncodedPair,
     SimpleTokenizer,
@@ -50,4 +51,5 @@ __all__ = [
     "compute_ndcg_at_k",
     "compute_hit_rate_at_k",
     "RankingEvaluator",
+    "ModelCheckpointManager",
 ]
