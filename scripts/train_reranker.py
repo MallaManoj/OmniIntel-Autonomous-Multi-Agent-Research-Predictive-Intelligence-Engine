@@ -15,6 +15,7 @@ from torch.utils.data import DataLoader
 # Add project root to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from src.models.checkpoint import ModelCheckpointManager
 from src.models.dataset import (
     SimpleTokenizer,
     TripletBatch,
@@ -230,23 +231,16 @@ def main() -> None:
     print(f"Fine-Tuned HitRate@1:{post_metrics.get('mean_hit_rate@1'):.4f}")
 
     # 8. Save Checkpoint
-    os.makedirs(train_config.checkpoint_dir, exist_ok=True)
     checkpoint_path = os.path.join(train_config.checkpoint_dir, "reranker_best.pt")
-    torch.save({
-        "epoch": trainer.current_epoch,
-        "model_state_dict": model.state_dict(),
-        "optimizer_state_dict": trainer.optimizer.state_dict(),
-        "vocab": tokenizer.vocab,
-        "model_config": {
-            "vocab_size": model_config.vocab_size,
-            "max_seq_len": model_config.max_seq_len,
-            "embedding_dim": model_config.embedding_dim,
-            "num_heads": model_config.num_heads,
-            "num_layers": model_config.num_layers,
-            "dim_feedforward": model_config.dim_feedforward,
-        },
-        "metrics": post_metrics,
-    }, checkpoint_path)
+    ModelCheckpointManager.save_checkpoint(
+        model=model,
+        filepath=checkpoint_path,
+        tokenizer=tokenizer,
+        config=model_config,
+        optimizer=trainer.optimizer,
+        epoch=trainer.current_epoch,
+        metrics=post_metrics,
+    )
     print(f"✓ Saved trained model checkpoint to: {checkpoint_path}")
 
 

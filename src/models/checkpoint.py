@@ -86,7 +86,9 @@ class ModelCheckpointManager:
         checkpoint = torch.load(filepath, map_location=target_device)
 
         # 1. Reconstruct Config
-        cfg_dict = checkpoint["config"]
+        cfg_dict = checkpoint.get("config") or checkpoint.get("model_config")
+        if cfg_dict is None:
+            raise KeyError("Checkpoint missing 'config' or 'model_config' metadata.")
         config = CrossEncoderConfig(
             vocab_size=cfg_dict["vocab_size"],
             max_seq_len=cfg_dict["max_seq_len"],
