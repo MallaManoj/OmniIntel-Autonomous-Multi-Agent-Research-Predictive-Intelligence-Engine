@@ -1,5 +1,13 @@
 """Custom PyTorch models, losses, and inference engines."""
 
+from src.models.dataset import (
+    EncodedPair,
+    SimpleTokenizer,
+    TripletBatch,
+    TripletRerankingDataset,
+    TripletSample,
+    collate_triplet_batch,
+)
 from src.models.device import DeviceManager, get_device
 from src.models.losses import (
     InBatchHardNegativeMiner,
@@ -21,4 +29,10 @@ __all__ = [
     "TripletMarginRankingLoss",
     "InBatchHardNegativeMiner",
     "ListNetRankingLoss",
+    "SimpleTokenizer",
+    "TripletSample",
+    "EncodedPair",
+    "TripletBatch",
+    "TripletRerankingDataset",
+    "collate_triplet_batch",
 ]
