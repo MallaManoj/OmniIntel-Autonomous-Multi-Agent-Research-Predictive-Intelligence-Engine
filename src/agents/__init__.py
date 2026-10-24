@@ -34,6 +34,11 @@ from src.agents.researcher import (
     ResearchDossier,
     ResearcherAgent,
 )
+from src.agents.synthesizer import (
+    ExecutiveDossier,
+    StrategicRecommendation,
+    SynthesizerAgent,
+)
 from src.agents.tools import (
     SandboxedREPL,
     SandboxSecurityError,
@@ -55,6 +60,7 @@ __all__ = [
     "CriticAgent",
     "CriticIssue",
     "EntityFinancialProfile",
+    "ExecutiveDossier",
     "ExecutionPlan",
     "GraphProvenance",
     "PlanComplexity",
@@ -66,6 +72,8 @@ __all__ = [
     "ResearcherAgent",
     "SandboxedREPL",
     "SandboxSecurityError",
+    "StrategicRecommendation",
+    "SynthesizerAgent",
     "Tool",
     "ToolRegistry",
     "ToolResult",
