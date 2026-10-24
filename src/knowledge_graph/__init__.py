@@ -2,6 +2,7 @@
 
 from src.knowledge_graph.chunker import DocumentChunk, TextChunker
 from src.knowledge_graph.embeddings import DenseEmbeddingModel, EmbeddingEngine
+from src.knowledge_graph.graph import KnowledgeGraph
 from src.knowledge_graph.schema import (
     Entity,
     EntityType,
@@ -30,7 +31,9 @@ __all__ = [
     "RelationType",
     "SubgraphResult",
     "slugify_id",
+    "KnowledgeGraph",
 ]
+
 
 
 
