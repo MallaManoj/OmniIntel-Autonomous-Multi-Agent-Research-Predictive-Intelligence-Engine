@@ -306,7 +306,8 @@ class MasterOrchestrator:
         final_dossier: Optional[ExecutiveDossier] = blackboard.get("final_dossier")
         latest_audit = blackboard.get("latest_audit")
 
-        mission_success = (final_dossier is not None) and (len(errors) == 0)
+        is_verified = (latest_audit is None) or (latest_audit.verdict == VerificationVerdict.APPROVED)
+        mission_success = (final_dossier is not None) and (len(errors) == 0) and is_verified
 
         result = OrchestratorResult(
             query=clean_query,
@@ -354,24 +355,34 @@ class MasterOrchestrator:
         # 1. Researcher Task Dispatch
         if role == "researcher":
             target_subject = task.input_context.get("entity") or task.input_context.get("subject")
+            self.researcher.transition_state(AgentState.PLANNING)
+            self.researcher.transition_state(AgentState.THINKING)
             dossier: ResearchDossier = await self.researcher.conduct_research(
                 task=task.description,
                 primary_entity=target_subject,
                 context={**task.input_context, "query": blackboard["query"]},
             )
+            self.researcher.transition_state(AgentState.REFLECTING)
+            self.researcher.transition_state(AgentState.COMPLETED)
             blackboard["research_dossiers"].append(dossier)
             blackboard["latest_research_dossier"] = dossier
             return dossier
 
         # 2. Quantitative Analyst Task Dispatch
         elif role == "quant":
-            target_entity = task.input_context.get("subject") or task.input_context.get("entity")
-            entities = [target_entity] if target_entity else None
+            entities = task.input_context.get("entities")
+            if not entities:
+                target_entity = task.input_context.get("subject") or task.input_context.get("entity")
+                entities = [target_entity] if target_entity else None
+            self.quant.transition_state(AgentState.PLANNING)
+            self.quant.transition_state(AgentState.THINKING)
             report: QuantReport = await self.quant.analyze_financials(
                 task=task.description,
                 entities=entities,
                 context={**task.input_context, "query": blackboard["query"]},
             )
+            self.quant.transition_state(AgentState.REFLECTING)
+            self.quant.transition_state(AgentState.COMPLETED)
             blackboard["quant_reports"].append(report)
             blackboard["latest_quant_report"] = report
             return report
@@ -380,12 +391,16 @@ class MasterOrchestrator:
         elif role == "critic":
             dossier = blackboard.get("latest_research_dossier")
             quant_report = blackboard.get("latest_quant_report")
+            self.critic.transition_state(AgentState.PLANNING)
+            self.critic.transition_state(AgentState.THINKING)
             audit: VerificationAudit = self.critic.audit(
                 task=task.description,
                 research_dossier=dossier,
                 quant_report=quant_report,
                 context=task.input_context,
             )
+            self.critic.transition_state(AgentState.REFLECTING)
+            self.critic.transition_state(AgentState.COMPLETED)
             blackboard["audits"].append(audit)
             blackboard["latest_audit"] = audit
             return audit
@@ -395,6 +410,8 @@ class MasterOrchestrator:
             dossier = blackboard.get("latest_research_dossier")
             quant_report = blackboard.get("latest_quant_report")
             audit = blackboard.get("latest_audit")
+            self.synthesizer.transition_state(AgentState.PLANNING)
+            self.synthesizer.transition_state(AgentState.THINKING)
 
             final_briefing: ExecutiveDossier = self.synthesizer.synthesize(
                 query=blackboard["query"],
@@ -403,6 +420,8 @@ class MasterOrchestrator:
                 audit=audit,
                 context=task.input_context,
             )
+            self.synthesizer.transition_state(AgentState.REFLECTING)
+            self.synthesizer.transition_state(AgentState.COMPLETED)
             blackboard["final_dossier"] = final_briefing
             await self._emit_event(
                 EventType.REPORT_GENERATED,

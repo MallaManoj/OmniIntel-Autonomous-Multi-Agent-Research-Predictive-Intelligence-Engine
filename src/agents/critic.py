@@ -279,19 +279,27 @@ class CriticAgent(BaseAgent):
             primary_ticker = self._find_matching_ticker(research_dossier.primary_entity, quant_report)
             if primary_ticker and primary_ticker in quant_report.profiles:
                 prof = quant_report.profiles[primary_ticker]
-                findings_text = " ".join(research_dossier.key_findings)
+                # Filter findings specifically referencing this entity to prevent false positive cross-talk
+                entity_keywords = {primary_ticker.lower(), research_dossier.primary_entity.lower()}
+                relevant_findings = [
+                    f for f in research_dossier.key_findings
+                    if any(ek in f.lower() for ek in entity_keywords)
+                ]
+                findings_text = " ".join(relevant_findings) if relevant_findings else " ".join(research_dossier.key_findings)
 
                 # Check if qualitative text claims a margin that deviates significantly from quant model
-                gm_claimed = self._extract_claimed_percentage(findings_text, ["gross margin", "margin"])
-                if gm_claimed is not None and "Gross Margin" in prof.metrics:
+                claimed_percentages = self._extract_all_claimed_percentages(findings_text, ["gross margin", "margin"])
+                if claimed_percentages and "Gross Margin" in prof.metrics:
                     actual_gm = prof.metrics["Gross Margin"].value * 100.0
-                    if abs(gm_claimed - actual_gm) > 10.0:
+                    matches_any = any(abs(p - actual_gm) <= 10.0 for p in claimed_percentages)
+                    if not matches_any:
+                        closest = min(claimed_percentages, key=lambda p: abs(p - actual_gm))
                         issues.append(
                             CriticIssue(
                                 severity="CRITICAL",
                                 category="NUMERICAL_MISMATCH",
                                 description=(
-                                    f"Qualitative finding claims ~{gm_claimed:.1f}% gross margin, "
+                                    f"Qualitative finding claims ~{closest:.1f}% gross margin, "
                                     f"contradicting verified quant model ({actual_gm:.1f}%)."
                                 ),
                                 location="Cross-Examination",
@@ -431,6 +439,25 @@ class CriticAgent(BaseAgent):
             if ticker.lower() in e_clean or e_clean in prof.name.lower():
                 return ticker
         return None
+
+    def _extract_all_claimed_percentages(self, text: str, keywords: List[str]) -> List[float]:
+        """Search text for all percentage numbers near specific keywords."""
+        percentages: List[float] = []
+        for kw in keywords:
+            pat1 = re.compile(re.escape(kw) + r"[^\d%]{1,25}([\d\.]+)%", re.IGNORECASE)
+            for m in pat1.finditer(text):
+                try:
+                    percentages.append(float(m.group(1)))
+                except ValueError:
+                    pass
+
+            pat2 = re.compile(r"([\d\.]+)%[^\d%]{0,15}" + re.escape(kw), re.IGNORECASE)
+            for m in pat2.finditer(text):
+                try:
+                    percentages.append(float(m.group(1)))
+                except ValueError:
+                    pass
+        return percentages
 
     def _extract_claimed_percentage(self, text: str, keywords: List[str]) -> Optional[float]:
         """Search text for percentage numbers near specific keywords (before or after)."""

@@ -434,12 +434,17 @@ def create_market_data_tool(feed: Optional[Dict[str, Dict[str, Any]]] = None) ->
             available = ", ".join(k.upper() for k in market_db.keys())
             return f"Financial data for '{entity}' not found in active market feed. Available entities: {available}."
 
+        gm_raw = data.get("gross_margin", 0)
+        gm_pct = gm_raw if gm_raw > 1.0 else gm_raw * 100
+        om_raw = data.get("operating_margin", 0)
+        om_pct = om_raw if om_raw > 1.0 else om_raw * 100
+
         lines = [
             f"=== Market Fundamentals: {data.get('name')} ({data.get('ticker')}) ===",
             f"Market Cap: ${data.get('market_cap_billions', 0):,.1f} Billion",
             f"TTM Revenue: ${data.get('revenue_ttm_billions', 0):,.1f} Billion",
-            f"Gross Margin: {data.get('gross_margin', 0) * 100:.2f}%",
-            f"Operating Margin: {data.get('operating_margin', 0) * 100:.2f}%",
+            f"Gross Margin: {gm_pct:.2f}%",
+            f"Operating Margin: {om_pct:.2f}%",
             f"P/E Multiple: {data.get('pe_ratio', 0):.1f}x",
             f"Debt-to-Equity: {data.get('debt_to_equity', 0):.2f}",
             f"Free Cash Flow: ${data.get('free_cash_flow_billions', 0):,.1f} Billion",

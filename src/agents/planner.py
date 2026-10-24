@@ -439,19 +439,34 @@ class PlannerAgent(BaseAgent):
                 research_tasks.append(task_id)
 
         if intent.get("has_quant"):
-            task_id = f"quant_{primary_subject.lower()}_metrics"
-            tasks.append(
-                PlannedTask(
-                    task_id=task_id,
-                    name=f"Quantitative Analysis: {primary_subject}",
-                    agent_role="quant",
-                    description=f"Extract and compute financial metrics, operating margins, valuation multiples, and statistical trends relevant to: {query}.",
-                    dependencies=[],
-                    input_context={"subject": primary_subject, "query": query},
-                    expected_output="Computed financial metrics, valuation tables, and statistical ratios.",
+            if intent.get("is_comparison") and len(entities) >= 2:
+                task_id = "quant_comparative_metrics"
+                tasks.append(
+                    PlannedTask(
+                        task_id=task_id,
+                        name=f"Quantitative Analysis: {', '.join(entities[:2])}",
+                        agent_role="quant",
+                        description=f"Extract and compute comparative financial metrics, operating margins, and valuation multiples for {', '.join(entities[:2])}.",
+                        dependencies=[],
+                        input_context={"entities": entities[:2], "query": query},
+                        expected_output=f"Comparative financial model for {', '.join(entities[:2])}.",
+                    )
                 )
-            )
-            quant_tasks.append(task_id)
+                quant_tasks.append(task_id)
+            else:
+                task_id = f"quant_{primary_subject.lower()}_metrics"
+                tasks.append(
+                    PlannedTask(
+                        task_id=task_id,
+                        name=f"Quantitative Analysis: {primary_subject}",
+                        agent_role="quant",
+                        description=f"Extract and compute financial metrics, operating margins, valuation multiples, and statistical trends relevant to: {query}.",
+                        dependencies=[],
+                        input_context={"subject": primary_subject, "query": query},
+                        expected_output="Computed financial metrics, valuation tables, and statistical ratios.",
+                    )
+                )
+                quant_tasks.append(task_id)
 
         # ---------------------------------------------------------------------
         # Stage 2: Cross-Functional Integration & Critical Reflection

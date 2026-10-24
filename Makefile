@@ -3,7 +3,7 @@
 # Unified CLI commands for local development, testing, and maintenance.
 # ==============================================================================
 
-.PHONY: help setup test lint clean train benchmark demo-rag
+.PHONY: help setup test lint clean train benchmark demo-rag demo-agents
 
 # Default shell
 SHELL := /usr/bin/env bash
@@ -11,13 +11,14 @@ PYTHON ?= $(shell if [ -x ./.venv/bin/python3 ]; then echo ./.venv/bin/python3; 
 
 help:
 	@echo "OmniIntel Project Automation Commands:"
-	@echo "  make setup     - Validate environment, initialize .venv, and setup .env"
-	@echo "  make test      - Run full automated unit and integration test suite"
-	@echo "  make lint      - Verify Python syntax and AST integrity across codebase"
-	@echo "  make train     - Execute PyTorch Cross-Encoder training and validation loop"
-	@echo "  make benchmark - Compare PyTorch Cross-Encoder vs. Vector Baseline"
-	@echo "  make demo-rag  - Execute live end-to-end Knowledge Graph & Hybrid RAG demonstration"
-	@echo "  make clean     - Remove build artifacts, pycache, and temporary test caches"
+	@echo "  make setup       - Validate environment, initialize .venv, and setup .env"
+	@echo "  make test        - Run full automated unit and integration test suite"
+	@echo "  make lint        - Verify Python syntax and AST integrity across codebase"
+	@echo "  make train       - Execute PyTorch Cross-Encoder training and validation loop"
+	@echo "  make benchmark   - Compare PyTorch Cross-Encoder vs. Vector Baseline"
+	@echo "  make demo-rag    - Execute live end-to-end Knowledge Graph & Hybrid RAG demonstration"
+	@echo "  make demo-agents - Execute live Autonomous Multi-Agent & Dynamic Self-Correction demo"
+	@echo "  make clean       - Remove build artifacts, pycache, and temporary test caches"
 
 setup:
 	@chmod +x scripts/setup_env.sh
@@ -34,6 +35,10 @@ benchmark:
 demo-rag:
 	@echo "Executing live Knowledge Graph & Hybrid RAG demonstration..."
 	@$(PYTHON) scripts/demo_rag_pipeline.py
+
+demo-agents:
+	@echo "Executing live OmniIntel Autonomous Multi-Agent Interactive Demonstration..."
+	@$(PYTHON) scripts/demo_multi_agent_system.py
 
 test:
 	@echo "Running test suite via Python unittest..."
