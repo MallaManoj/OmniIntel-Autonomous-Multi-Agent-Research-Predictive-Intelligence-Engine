@@ -3,7 +3,7 @@
 # Unified CLI commands for local development, testing, and maintenance.
 # ==============================================================================
 
-.PHONY: help setup test lint clean train benchmark demo-rag demo-agents run-api docker-build docker-run
+.PHONY: help setup test lint clean train benchmark demo-rag demo-agents run-api docker-build docker-run compose-up compose-down compose-logs
 
 # Default shell
 SHELL := /usr/bin/env bash
@@ -52,6 +52,18 @@ docker-build:
 docker-run:
 	@echo "Running OmniIntel container on http://localhost:8000..."
 	@docker run --rm -p 8000:8000 --name omniintel-service omniintel:latest
+
+compose-up:
+	@echo "Spinning up OmniIntel multi-service cluster (API + UI + Data Volumes)..."
+	@docker compose up --build -d
+
+compose-down:
+	@echo "Stopping OmniIntel cluster and dismantling network..."
+	@docker compose down
+
+compose-logs:
+	@echo "Tailing multi-service cluster logs..."
+	@docker compose logs -f
 
 test:
 	@echo "Running test suite via Python unittest..."

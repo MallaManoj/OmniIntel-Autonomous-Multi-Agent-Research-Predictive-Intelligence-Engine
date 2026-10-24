@@ -11,6 +11,9 @@ uvicorn[standard]>=0.24.0
 httpx>=0.25.0
 websockets>=12.0.0
 
+# Frontend UI & Visualization
+streamlit>=1.28.0
+
 # Configuration & Utilities
 pyyaml>=6.0.1
 python-dotenv>=1.0.0
