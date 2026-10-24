@@ -207,6 +207,10 @@ class ResearcherAgent(BaseAgent):
                     if finding_line not in key_findings:
                         key_findings.append(finding_line)
 
+        # Record remediation feedback incorporation if present in context
+        if context and context.get("feedback"):
+            key_findings.append(f"Remediation resolution addressing critic feedback: {context['feedback']}")
+
         # 2. Knowledge Graph Relational Traversal
         if "traverse_knowledge_graph" in self.tools.tool_names and subject:
             sub_slug = slugify_id(subject)

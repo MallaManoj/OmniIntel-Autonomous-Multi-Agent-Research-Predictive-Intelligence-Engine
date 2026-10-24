@@ -5,8 +5,10 @@ Coordinates the end-to-end mission lifecycle:
   2. Resolves parallel execution stages using Kahn's topological batching algorithm.
   3. Dispatches concurrent agent tasks (ResearcherAgent, QuantAgent) via asyncio.gather().
   4. Channels intermediate outputs to CriticAgent for adversarial reflection.
-  5. Aggregates verified outputs through SynthesizerAgent into an ExecutiveDossier.
-  6. Broadcasts real-time lifecycle telemetry across the asynchronous EventBus.
+  5. Implements closed-loop Self-Correction: triggers dynamic graph surgery via
+     Planner.replan() when Critic rejects upstream outputs.
+  6. Aggregates verified outputs through SynthesizerAgent into an ExecutiveDossier.
+  7. Broadcasts real-time lifecycle telemetry across the asynchronous EventBus.
 """
 
 import asyncio
@@ -40,6 +42,8 @@ class OrchestratorResult:
         total_stages_executed: Number of parallel Kahn stages processed.
         audit: VerificationAudit from the Critic agent.
         errors: List of any non-fatal errors or exceptions encountered.
+        replan_count: Number of dynamic self-correction replanning cycles performed.
+        remediation_history: Chronological log of graph surgeries and remediation directives.
         created_at: Epoch timestamp of mission completion.
     """
 
@@ -52,6 +56,8 @@ class OrchestratorResult:
     total_stages_executed: int = 0
     audit: Optional[VerificationAudit] = None
     errors: List[str] = field(default_factory=list)
+    replan_count: int = 0
+    remediation_history: List[Dict[str, Any]] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
 
     def to_markdown(self) -> str:
@@ -66,6 +72,8 @@ class OrchestratorResult:
             "success": self.success,
             "total_latency_ms": round(self.total_latency_ms, 3),
             "total_stages_executed": self.total_stages_executed,
+            "replan_count": self.replan_count,
+            "remediation_history": self.remediation_history,
             "plan": self.plan.to_dict(),
             "dossier": self.dossier.to_dict() if self.dossier else None,
             "audit": self.audit.to_dict() if self.audit else None,
@@ -78,7 +86,7 @@ class MasterOrchestrator:
     """Central Conductor orchestrating specialized agents through DAG dependencies.
 
     Manages agent lifecycle dispatch, parallel stage execution, blackboard state sharing,
-    and event streaming.
+    event streaming, and closed-loop dynamic replanning upon Critic rejection.
     """
 
     def __init__(
@@ -131,19 +139,21 @@ class MasterOrchestrator:
         await self.event_bus.publish(event)
 
     # -------------------------------------------------------------------------
-    # Core Mission Execution Lifecycle
+    # Core Mission Execution Lifecycle with Self-Correction Loop
     # -------------------------------------------------------------------------
 
     async def run_mission(
         self,
         query: str,
         context: Optional[Dict[str, Any]] = None,
+        max_replans: int = 2,
     ) -> OrchestratorResult:
-        """Execute end-to-end multi-agent research mission according to Kahn DAG stages.
+        """Execute end-to-end multi-agent research mission with closed-loop self-correction.
 
         Args:
             query: The high-level strategic intelligence prompt.
             context: Optional domain context or prior parameters.
+            max_replans: Maximum self-correction iterations permitted upon Critic rejection.
 
         Returns:
             OrchestratorResult containing the final ExecutiveDossier and stage outputs.
@@ -156,16 +166,16 @@ class MasterOrchestrator:
         await self._emit_event(EventType.SYSTEM_STARTED, {"query": clean_query})
 
         # ---------------------------------------------------------------------
-        # Stage 0: Strategic Planning & DAG Generation
+        # Stage 0: Initial Planning & DAG Assembly
         # ---------------------------------------------------------------------
-        plan: ExecutionPlan = self.planner.create_plan(clean_query, context=context)
+        current_plan: ExecutionPlan = self.planner.create_plan(clean_query, context=context)
         await self._emit_event(
             EventType.TASK_SCHEDULED,
             {
-                "plan_id": plan.plan_id,
-                "total_tasks": plan.total_tasks,
-                "stages": plan.total_stages,
-                "complexity": plan.complexity.value,
+                "plan_id": current_plan.plan_id,
+                "total_tasks": current_plan.total_tasks,
+                "stages": current_plan.total_stages,
+                "complexity": current_plan.complexity.value,
             },
         )
 
@@ -182,66 +192,134 @@ class MasterOrchestrator:
 
         errors: List[str] = []
         stages_processed = 0
+        replan_count = 0
+        remediation_history: List[Dict[str, Any]] = []
 
         # ---------------------------------------------------------------------
-        # Parallel Kahn Batch Execution Loop
+        # Dynamic Closed-Loop Execution Engine
         # ---------------------------------------------------------------------
-        for stage_idx, batch_task_ids in enumerate(plan.batches):
-            stages_processed += 1
-            await self._emit_event(
-                EventType.TASK_STARTED,
-                {
-                    "stage_index": stage_idx,
-                    "batch_size": len(batch_task_ids),
-                    "tasks": batch_task_ids,
-                },
-            )
+        while True:
+            replan_triggered = False
 
-            # Concurrent execution of all independent tasks within this stage
-            tasks_to_run = [
-                self._dispatch_task(task_id, plan, blackboard)
-                for task_id in batch_task_ids
-            ]
-            stage_results = await asyncio.gather(*tasks_to_run, return_exceptions=True)
+            for stage_idx, batch_task_ids in enumerate(current_plan.batches):
+                # Identify tasks in this batch that have not yet executed
+                pending_batch = [
+                    t_id for t_id in batch_task_ids
+                    if t_id not in blackboard["task_outputs"]
+                ]
 
-            for task_id, res in zip(batch_task_ids, stage_results):
-                dag_node = plan.dag.get_task(task_id)
-                if isinstance(res, Exception):
-                    dag_node.state = TaskState.FAILED
-                    dag_node.error = str(res)
-                    errors.append(f"Task '{task_id}' failed: {res}")
-                    await self._emit_event(EventType.TASK_FAILED, {"task_id": task_id, "error": str(res)})
-                else:
-                    dag_node.state = TaskState.COMPLETED
-                    dag_node.result = res
-                    blackboard["task_outputs"][task_id] = res
-                    await self._emit_event(EventType.TASK_COMPLETED, {"task_id": task_id})
+                # If all tasks in batch already completed (e.g. from prior plan), skip execution
+                if not pending_batch:
+                    continue
 
-            # Check if Critic rejected in this stage
-            latest_audit = blackboard.get("latest_audit")
-            if latest_audit and latest_audit.verdict == VerificationVerdict.REJECTED:
-                # Flag rejection event
+                stages_processed += 1
                 await self._emit_event(
-                    EventType.CRITIC_REJECTED,
-                    {"remediation": latest_audit.remediation_feedback},
+                    EventType.TASK_STARTED,
+                    {
+                        "stage_index": stage_idx,
+                        "batch_size": len(pending_batch),
+                        "tasks": pending_batch,
+                        "replan_cycle": replan_count,
+                    },
                 )
+
+                # Concurrent execution of all independent tasks within this stage
+                tasks_to_run = [
+                    self._dispatch_task(task_id, current_plan, blackboard)
+                    for task_id in pending_batch
+                ]
+                stage_results = await asyncio.gather(*tasks_to_run, return_exceptions=True)
+
+                for task_id, res in zip(pending_batch, stage_results):
+                    dag_node = current_plan.dag.get_task(task_id)
+                    if isinstance(res, Exception):
+                        dag_node.state = TaskState.FAILED
+                        dag_node.error = str(res)
+                        errors.append(f"Task '{task_id}' failed: {res}")
+                        await self._emit_event(EventType.TASK_FAILED, {"task_id": task_id, "error": str(res)})
+                    else:
+                        dag_node.state = TaskState.COMPLETED
+                        dag_node.result = res
+                        blackboard["task_outputs"][task_id] = res
+                        await self._emit_event(EventType.TASK_COMPLETED, {"task_id": task_id})
+
+                # Check if Critic evaluated and issued a REJECTION
+                latest_audit: Optional[VerificationAudit] = blackboard.get("latest_audit")
+                critic_in_batch = any(current_plan.tasks[t].agent_role == "critic" for t in pending_batch)
+
+                if critic_in_batch and latest_audit and latest_audit.verdict == VerificationVerdict.REJECTED:
+                    await self._emit_event(
+                        EventType.CRITIC_REJECTED,
+                        {
+                            "verdict": latest_audit.verdict.value,
+                            "remediation": latest_audit.remediation_feedback,
+                            "replan_count": replan_count,
+                        },
+                    )
+
+                    # Trigger dynamic graph surgery if within replanning budget
+                    if replan_count < max_replans:
+                        failed_task_id = self._identify_failed_task(latest_audit, current_plan)
+                        replan_count += 1
+
+                        # Execute dynamic graph surgery
+                        new_plan = self.planner.replan(
+                            original_plan=current_plan,
+                            failed_task_id=failed_task_id,
+                            feedback=latest_audit.remediation_feedback or "Remediate verified defect.",
+                        )
+
+                        remediation_record = {
+                            "replan_index": replan_count,
+                            "failed_task_id": failed_task_id,
+                            "feedback": latest_audit.remediation_feedback,
+                            "new_plan_id": new_plan.plan_id,
+                            "timestamp": time.time(),
+                        }
+                        remediation_history.append(remediation_record)
+
+                        await self._emit_event(
+                            EventType.TASK_SCHEDULED,
+                            {
+                                "plan_id": new_plan.plan_id,
+                                "replan_count": replan_count,
+                                "remediation_for": failed_task_id,
+                            },
+                        )
+
+                        # Invalidate downstream critic and synthesizer in blackboard to force re-evaluation
+                        for t_id in list(blackboard["task_outputs"].keys()):
+                            if t_id.startswith("critic") or t_id.startswith("synthesizer"):
+                                del blackboard["task_outputs"][t_id]
+                        blackboard["latest_audit"] = None
+                        blackboard["final_dossier"] = None
+
+                        current_plan = new_plan
+                        replan_triggered = True
+                        break  # Break out of stage loop to restart execution on new_plan
+
+            # If all stages completed without triggering a new replan, exit closed loop
+            if not replan_triggered:
+                break
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
         final_dossier: Optional[ExecutiveDossier] = blackboard.get("final_dossier")
-        latest_audit: Optional[VerificationAudit] = blackboard.get("latest_audit")
+        latest_audit = blackboard.get("latest_audit")
 
         mission_success = (final_dossier is not None) and (len(errors) == 0)
 
         result = OrchestratorResult(
             query=clean_query,
             success=mission_success,
-            plan=plan,
+            plan=current_plan,
             dossier=final_dossier,
             stage_outputs=blackboard["task_outputs"],
             total_latency_ms=elapsed_ms,
             total_stages_executed=stages_processed,
             audit=latest_audit,
             errors=errors,
+            replan_count=replan_count,
+            remediation_history=remediation_history,
         )
 
         return result
@@ -250,12 +328,13 @@ class MasterOrchestrator:
         self,
         query: str,
         context: Optional[Dict[str, Any]] = None,
+        max_replans: int = 2,
     ) -> OrchestratorResult:
         """Synchronous entry point for CLI and blocking scripts."""
-        return asyncio.run(self.run_mission(query, context=context))
+        return asyncio.run(self.run_mission(query, context=context, max_replans=max_replans))
 
     # -------------------------------------------------------------------------
-    # Internal Task Dispatcher
+    # Internal Task Dispatcher & Failure Resolution
     # -------------------------------------------------------------------------
 
     async def _dispatch_task(
@@ -274,7 +353,6 @@ class MasterOrchestrator:
 
         # 1. Researcher Task Dispatch
         if role == "researcher":
-            # Extract target subject from task input_context or name
             target_subject = task.input_context.get("entity") or task.input_context.get("subject")
             dossier: ResearchDossier = await self.researcher.conduct_research(
                 task=task.description,
@@ -339,3 +417,29 @@ class MasterOrchestrator:
 
         else:
             raise ValueError(f"Unknown agent role '{role}' for task '{task_id}'.")
+
+    def _identify_failed_task(
+        self,
+        audit: VerificationAudit,
+        plan: ExecutionPlan,
+    ) -> str:
+        """Map Critic issue defect locations back to specific upstream task IDs."""
+        # 1. Inspect issues for location or category clues
+        for issue in audit.issues:
+            if issue.severity == "CRITICAL":
+                if issue.location == "Research Dossier" or issue.category in ("UNGROUNDED_CLAIM", "MISSING_EVIDENCE"):
+                    for t_id, task in plan.tasks.items():
+                        if task.agent_role == "researcher":
+                            return t_id
+                elif issue.location == "Quant Report" or issue.category == "NUMERICAL_MISMATCH":
+                    for t_id, task in plan.tasks.items():
+                        if task.agent_role == "quant":
+                            return t_id
+
+        # 2. Fallback to first non-critic upstream task
+        for t_id, task in plan.tasks.items():
+            if task.agent_role in ("researcher", "quant"):
+                return t_id
+
+        # 3. Default to initial task
+        return plan.batches[0][0]
