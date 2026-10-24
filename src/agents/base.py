@@ -13,7 +13,7 @@ from enum import Enum
 import inspect
 import json
 import time
-from typing import Any, Callable, Coroutine, Dict, List, Optional, Set, Union
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Set, Tuple, Union
 
 from src.core.events import Event, EventBus, EventType
 

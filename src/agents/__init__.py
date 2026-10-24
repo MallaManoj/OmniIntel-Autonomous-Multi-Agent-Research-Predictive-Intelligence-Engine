@@ -10,6 +10,12 @@ from src.agents.base import (
     ToolRegistry,
     ToolResult,
 )
+from src.agents.planner import (
+    ExecutionPlan,
+    PlanComplexity,
+    PlannedTask,
+    PlannerAgent,
+)
 
 __all__ = [
     "AgentMemory",
@@ -17,6 +23,10 @@ __all__ = [
     "AgentResponse",
     "AgentState",
     "BaseAgent",
+    "ExecutionPlan",
+    "PlanComplexity",
+    "PlannedTask",
+    "PlannerAgent",
     "Tool",
     "ToolRegistry",
     "ToolResult",
