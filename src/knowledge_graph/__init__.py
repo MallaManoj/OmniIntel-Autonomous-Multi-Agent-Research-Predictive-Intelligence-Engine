@@ -13,6 +13,7 @@ from src.knowledge_graph.schema import (
     SubgraphResult,
     slugify_id,
 )
+from src.knowledge_graph.traversal import GraphTraversalEngine, PathResult
 from src.knowledge_graph.vector_store import VectorRecord, VectorSearchResult, VectorStore
 
 __all__ = [
@@ -32,7 +33,10 @@ __all__ = [
     "SubgraphResult",
     "slugify_id",
     "KnowledgeGraph",
+    "GraphTraversalEngine",
+    "PathResult",
 ]
+
 
 
 
