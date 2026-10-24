@@ -10,6 +10,12 @@ from src.agents.base import (
     ToolRegistry,
     ToolResult,
 )
+from src.agents.critic import (
+    CriticAgent,
+    CriticIssue,
+    VerificationAudit,
+    VerificationVerdict,
+)
 from src.agents.planner import (
     ExecutionPlan,
     PlanComplexity,
@@ -46,6 +52,8 @@ __all__ = [
     "BaseAgent",
     "CitationItem",
     "ComputedMetric",
+    "CriticAgent",
+    "CriticIssue",
     "EntityFinancialProfile",
     "ExecutionPlan",
     "GraphProvenance",
@@ -61,6 +69,8 @@ __all__ = [
     "Tool",
     "ToolRegistry",
     "ToolResult",
+    "VerificationAudit",
+    "VerificationVerdict",
     "create_agent_toolset",
     "create_graph_traversal_tool",
     "create_market_data_tool",
