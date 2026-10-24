@@ -3,7 +3,7 @@
 # Unified CLI commands for local development, testing, and maintenance.
 # ==============================================================================
 
-.PHONY: help setup test lint clean train benchmark
+.PHONY: help setup test lint clean train benchmark demo-rag
 
 # Default shell
 SHELL := /usr/bin/env bash
@@ -16,6 +16,7 @@ help:
 	@echo "  make lint      - Verify Python syntax and AST integrity across codebase"
 	@echo "  make train     - Execute PyTorch Cross-Encoder training and validation loop"
 	@echo "  make benchmark - Compare PyTorch Cross-Encoder vs. Vector Baseline"
+	@echo "  make demo-rag  - Execute live end-to-end Knowledge Graph & Hybrid RAG demonstration"
 	@echo "  make clean     - Remove build artifacts, pycache, and temporary test caches"
 
 setup:
@@ -29,6 +30,10 @@ train:
 benchmark:
 	@echo "Running quantitative PyTorch Cross-Encoder vs Vector Search benchmarks..."
 	@$(PYTHON) scripts/benchmark_models.py
+
+demo-rag:
+	@echo "Executing live Knowledge Graph & Hybrid RAG demonstration..."
+	@$(PYTHON) scripts/demo_rag_pipeline.py
 
 test:
 	@echo "Running test suite via Python unittest..."

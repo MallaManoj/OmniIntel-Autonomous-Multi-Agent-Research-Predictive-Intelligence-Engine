@@ -227,6 +227,13 @@ class HybridSearchEngine:
                     score += 2.0  # Exact entity mention bonus
                 elif ent_id in expanded_entity_weights:
                     score += 1.0  # Connected graph neighbor bonus
+                    # Trace reasoning path connecting root query entity to document entity
+                    for root_id in detected_entity_ids:
+                        path = self.traversal_engine.find_most_reliable_path(
+                            root_id, ent_id, max_hops=max_hops
+                        )
+                        if path and path.found and path.hop_count > 0:
+                            found_paths.append(path)
             if score > 0.0:
                 graph_scores[doc_id] = score
 
