@@ -238,6 +238,9 @@ class HybridRAGPipeline:
             total_latency_ms=round(total_latency_ms, 3),
         )
 
+    # Convenience alias for Agent tools
+    retrieve = query
+
     def _format_grounded_context(
         self,
         query: str,

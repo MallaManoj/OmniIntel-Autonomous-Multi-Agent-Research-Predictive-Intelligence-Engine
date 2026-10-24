@@ -126,11 +126,12 @@ class Tool:
         description: str,
         func: Callable[..., Any],
         parameters_schema: Optional[Dict[str, Any]] = None,
+        parameters: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.name = name.strip()
         self.description = description.strip()
         self.func = func
-        self.parameters_schema = parameters_schema or {}
+        self.parameters_schema = parameters_schema or parameters or {}
         self.is_async = inspect.iscoroutinefunction(func)
 
     async def execute(self, **kwargs) -> ToolResult:
