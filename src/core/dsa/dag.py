@@ -2,10 +2,24 @@
 
 Manages task dependencies, execution state transitions, and parent-child linkages.
 Guarantees deterministic execution order and parallel batch discovery for agent subtasks.
+Includes Kahn's Algorithm for Topological Sorting and cycle detection.
 """
 
+from collections import deque
 from enum import Enum
 from typing import Any, Callable, Optional
+
+
+class CyclicDependencyError(Exception):
+    """Raised when a circular dependency cycle is detected in the execution graph."""
+
+    def __init__(self, cycle_path: Optional[list[str]] = None) -> None:
+        self.cycle_path = cycle_path
+        if cycle_path:
+            formatted_path = " -> ".join(cycle_path)
+            super().__init__(f"Circular dependency cycle detected: {formatted_path}")
+        else:
+            super().__init__("Circular dependency cycle detected in DAG.")
 
 
 class TaskState(str, Enum):
@@ -74,7 +88,7 @@ class TaskNode:
 class DAG:
     """Directed Acyclic Graph modeling agent workflows using adjacency lists.
 
-    Provides node registration, dependency edge management, and degree inspection.
+    Supports dependency management, cycle detection, and Kahn's topological sort.
     """
 
     def __init__(self) -> None:
@@ -165,6 +179,145 @@ class DAG:
     def get_leaf_tasks(self) -> list[str]:
         """Find all terminal tasks with out-degree = 0 (no dependents)."""
         return [task_id for task_id, node in self._nodes.items() if len(node.dependents) == 0]
+
+    # -------------------------------------------------------------------------
+    # Kahn's Algorithm & Topological Sorting
+    # -------------------------------------------------------------------------
+
+    def topological_sort(self) -> list[str]:
+        """Generate a linear ordering of tasks using Kahn's Algorithm (BFS).
+
+        Returns:
+            list[str]: Task IDs ordered such that for every dependency u -> v,
+                       u appears before v.
+
+        Raises:
+            CyclicDependencyError: If a cycle exists, preventing topological sort.
+
+        Time Complexity: O(V + E) where V is tasks count, E is dependency edges.
+        Space Complexity: O(V)
+        """
+        # Step 1: Compute in-degree for all vertices
+        in_degree: dict[str, int] = {
+            task_id: len(node.dependencies) for task_id, node in self._nodes.items()
+        }
+
+        # Step 2: Initialize queue with all nodes having in-degree 0 (roots)
+        queue: deque[str] = deque([task_id for task_id, deg in in_degree.items() if deg == 0])
+        ordered_tasks: list[str] = []
+
+        # Step 3: Process queue
+        while queue:
+            current_id = queue.popleft()
+            ordered_tasks.append(current_id)
+
+            for dependent_id in self._nodes[current_id].dependents:
+                in_degree[dependent_id] -= 1
+                if in_degree[dependent_id] == 0:
+                    queue.append(dependent_id)
+
+        # Step 4: Verify cycle invariant
+        if len(ordered_tasks) != len(self._nodes):
+            cycle = self.find_cycle()
+            raise CyclicDependencyError(cycle_path=cycle)
+
+        return ordered_tasks
+
+    def get_execution_batches(self) -> list[list[str]]:
+        """Group tasks into parallelizable execution stages using Kahn's Algorithm.
+
+        Each batch contains tasks whose dependencies have completed in previous batches.
+        All tasks within a batch can be executed concurrently via asyncio / threads.
+
+        Returns:
+            list of batches, e.g. [['fetch_a', 'fetch_b'], ['process_ab'], ['report']]
+
+        Raises:
+            CyclicDependencyError: If a cycle is present in the graph.
+        """
+        in_degree: dict[str, int] = {
+            task_id: len(node.dependencies) for task_id, node in self._nodes.items()
+        }
+
+        # Initial frontier of ready tasks (in-degree == 0)
+        current_batch: list[str] = [task_id for task_id, deg in in_degree.items() if deg == 0]
+        batches: list[list[str]] = []
+        processed_count = 0
+
+        while current_batch:
+            batches.append(sorted(current_batch))
+            processed_count += len(current_batch)
+            next_batch: list[str] = []
+
+            for task_id in current_batch:
+                for dependent_id in self._nodes[task_id].dependents:
+                    in_degree[dependent_id] -= 1
+                    if in_degree[dependent_id] == 0:
+                        next_batch.append(dependent_id)
+
+            current_batch = next_batch
+
+        if processed_count != len(self._nodes):
+            raise CyclicDependencyError(cycle_path=self.find_cycle())
+
+        return batches
+
+    def has_cycle(self) -> bool:
+        """Check if the graph contains any circular dependency.
+
+        Time Complexity: O(V + E)
+        """
+        try:
+            self.topological_sort()
+            return False
+        except CyclicDependencyError:
+            return True
+
+    def find_cycle(self) -> Optional[list[str]]:
+        """Detect and return the exact cycle path using 3-color DFS traversal.
+
+        Colors:
+            0 = WHITE (unvisited)
+            1 = GRAY (currently in recursion call stack)
+            2 = BLACK (fully processed)
+
+        Returns:
+            Optional[list[str]]: Path of cycle nodes [A, B, C, A] or None.
+        """
+        color: dict[str, int] = {task_id: 0 for task_id in self._nodes}
+        parent: dict[str, Optional[str]] = {task_id: None for task_id in self._nodes}
+        cycle_path: list[str] = []
+
+        def _dfs(node_id: str) -> bool:
+            color[node_id] = 1  # Mark GRAY (in stack)
+
+            for dependent_id in self._nodes[node_id].dependents:
+                if color[dependent_id] == 1:
+                    # Found back-edge to an active ancestor in stack -> CYCLE!
+                    curr = node_id
+                    cycle_nodes = [dependent_id]
+                    while curr != dependent_id and curr is not None:
+                        cycle_nodes.append(curr)
+                        curr = parent.get(curr)  # type: ignore[assignment]
+                    cycle_nodes.append(dependent_id)
+                    cycle_nodes.reverse()
+                    cycle_path.extend(cycle_nodes)
+                    return True
+
+                if color[dependent_id] == 0:
+                    parent[dependent_id] = node_id
+                    if _dfs(dependent_id):
+                        return True
+
+            color[node_id] = 2  # Mark BLACK (done)
+            return False
+
+        for task_id in self._nodes:
+            if color[task_id] == 0:
+                if _dfs(task_id):
+                    return cycle_path
+
+        return None
 
     def reset_states(self) -> None:
         """Reset all node execution states back to PENDING."""
