@@ -350,6 +350,14 @@ class KnowledgeGraph:
 
         return kg
 
+    def get_all_entities(self) -> List[Entity]:
+        """Retrieve all registered entities in the graph."""
+        return list(self._nodes.values())
+
+    def get_all_triples(self) -> List[FactTriple]:
+        """Retrieve all factual relationship triples in the graph."""
+        return list(self._triples.values())
+
     def save_json(self, filepath: Union[str, Path]) -> None:
         """Persist graph structure to a JSON file."""
         path = Path(filepath)

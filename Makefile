@@ -3,7 +3,7 @@
 # Unified CLI commands for local development, testing, and maintenance.
 # ==============================================================================
 
-.PHONY: help setup test lint clean train benchmark demo-rag demo-agents
+.PHONY: help setup test lint clean train benchmark demo-rag demo-agents run-api
 
 # Default shell
 SHELL := /usr/bin/env bash
@@ -18,6 +18,7 @@ help:
 	@echo "  make benchmark   - Compare PyTorch Cross-Encoder vs. Vector Baseline"
 	@echo "  make demo-rag    - Execute live end-to-end Knowledge Graph & Hybrid RAG demonstration"
 	@echo "  make demo-agents - Execute live Autonomous Multi-Agent & Dynamic Self-Correction demo"
+	@echo "  make run-api     - Launch FastAPI backend server with auto-reload (port 8000)"
 	@echo "  make clean       - Remove build artifacts, pycache, and temporary test caches"
 
 setup:
@@ -39,6 +40,10 @@ demo-rag:
 demo-agents:
 	@echo "Executing live OmniIntel Autonomous Multi-Agent Interactive Demonstration..."
 	@$(PYTHON) scripts/demo_multi_agent_system.py
+
+run-api:
+	@echo "Starting OmniIntel FastAPI production service on http://0.0.0.0:8000..."
+	@$(PYTHON) -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
 
 test:
 	@echo "Running test suite via Python unittest..."
